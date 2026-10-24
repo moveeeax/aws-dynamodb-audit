@@ -1,0 +1,25 @@
+# Virtualenvs
+/.venv/
+/venv/
+
+# Python build and cache artifacts
+__pycache__/
+*.py[cod]
+/build/
+/dist/
+*.egg-info/
+/.eggs/
+
+# Test and lint caches
+/.pytest_cache/
+/.ruff_cache/
+/.coverage
+/htmlcov/
+
+# Local dumps produced by --dump-json. Anchored to the repo root so the
+# committed fixtures under tests/ and examples/ are never swept up.
+/dump.json
+/*.dump.json
+
+!tests/fixtures/**
+!examples/**

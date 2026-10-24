@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "tool_version": "0.1.0",
+  "region": "eu-central-1",
+  "collected_at": "2026-10-24T13:00:00+00:00",
+  "lookback_days": 14,
+  "tables_audited": 4,
+  "findings": [
+    {
+      "table": "archive",
+      "rule": "overprovisioned-capacity",
+      "severity": "medium",
+      "message": "1000 RCU provisioned against a 0.0 consumed average (no measured reads); 1000 WCU provisioned against a 0.0 consumed average (no measured writes) - about $569.40/month of unused capacity",
+      "detail": {
+        "waste_factor": 3.0,
+        "read": {
+          "provisioned": 1000.0,
+          "consumed_avg": 0.0,
+          "wasted": 1000.0
+        },
+        "write": {
+          "provisioned": 1000.0,
+          "consumed_avg": 0.0,
+          "wasted": 1000.0
+        },
+        "lookback_days": 14
+      },
+      "estimated_monthly_usd": 569.4
+    },
+    {
+      "table": "audit-log",
+      "rule": "aws-owned-key",
+      "severity": "medium",
+      "message": "table is encrypted with the AWS-owned key, which has no key policy, no grants and no CloudTrail trail of its own - a customer-managed-key requirement cannot be met",
+      "detail": {
+        "sse_type": null,
+        "sse_status": null
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "gsi-idle",
+      "severity": "medium",
+      "message": "GSI by-status consumed 0.000 capacity units on average over 14d - it is paid for on every write and read by nobody",
+      "detail": {
+        "index": "by-status",
+        "read_avg": 0.0,
+        "write_avg": 0.0,
+        "index_size_bytes": 325058560,
+        "lookback_days": 14
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "gsi-projects-all",
+      "severity": "medium",
+      "message": "GSI by-customer projects ALL, so every write to the 8.0 GiB base table is replicated in full into the index (6.0 GiB); switch to KEYS_ONLY or INCLUDE with the attributes the query actually reads",
+      "detail": {
+        "index": "by-customer",
+        "projection_type": "ALL",
+        "index_size_bytes": 6442450944,
+        "table_size_bytes": 8589934592,
+        "size_ratio": 0.75
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "no-autoscaling",
+      "severity": "low",
+      "message": "provisioned mode with no Application Auto Scaling target for ReadCapacityUnits, WriteCapacityUnits - capacity only ever changes when a human notices",
+      "detail": {
+        "missing_dimensions": [
+          "dynamodb:table:ReadCapacityUnits",
+          "dynamodb:table:WriteCapacityUnits"
+        ],
+        "registered": []
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "no-deletion-protection",
+      "severity": "high",
+      "message": "deletion protection is off on a table holding 2,412,880 items",
+      "detail": {
+        "item_count": 2412880,
+        "table_size_bytes": 8589934592,
+        "prod_threshold_items": 10000,
+        "prod_threshold_bytes": 1073741824
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "no-pitr",
+      "severity": "high",
+      "message": "point-in-time recovery is not enabled, so there is no restore window - this cannot be switched on retroactively",
+      "detail": {
+        "continuous_backups_status": "DISABLED",
+        "point_in_time_recovery_status": "DISABLED",
+        "item_count": 2412880
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "no-ttl",
+      "severity": "low",
+      "message": "TTL is disabled on a table of 8.0 GiB taking 30.0 WCU of sustained writes; growth is inferred, pass --compare-json <older dump> for a measured delta",
+      "detail": {
+        "ttl_status": "DISABLED",
+        "table_size_bytes": 8589934592,
+        "write_avg": 30.0,
+        "measured": false
+      }
+    },
+    {
+      "table": "orders",
+      "rule": "overprovisioned-capacity",
+      "severity": "medium",
+      "message": "500 RCU provisioned against a 40.0 consumed average (12.5x) - about $43.65/month of unused capacity",
+      "detail": {
+        "waste_factor": 3.0,
+        "read": {
+          "provisioned": 500.0,
+          "consumed_avg": 40.0,
+          "wasted": 460.0
+        },
+        "lookback_days": 14
+      },
+      "estimated_monthly_usd": 43.65
+    },
+    {
+      "table": "sessions",
+      "rule": "ondemand-steady-traffic",
+      "severity": "low",
+      "message": "on-demand traffic is flat (cv 0.04) and costs about $98.55/month; 125 RCU / 50 WCU provisioned with 20% headroom would cost about $35.59/month",
+      "detail": {
+        "ondemand_monthly_usd": 98.55,
+        "provisioned_equivalent_monthly_usd": 35.59,
+        "read_avg": 100.0,
+        "write_avg": 40.0,
+        "read_peak": 104.0,
+        "write_peak": 42.0,
+        "coefficient_of_variation": 0.035
+      },
+      "estimated_monthly_usd": 62.96
+    }
+  ],
+  "estimated_monthly_waste_usd": 676.02,
+  "pricing": {
+    "rcu_hour": 0.00013,
+    "wcu_hour": 0.00065,
+    "read_request_million": 0.125,
+    "write_request_million": 0.625,
+    "hours_per_month": 730
+  },
+  "pricing_note": "Prices are us-east-1 DynamoDB Standard list prices (provisioned $0.00013/RCU-hour, $0.00065/WCU-hour; on-demand $0.125/M read request units, $0.625/M write request units). Other regions cost more - override with --price-rcu-hour, --price-wcu-hour, --price-read-request, --price-write-request."
+}

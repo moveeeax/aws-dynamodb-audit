@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "region": "eu-central-1",
+  "collected_at": "2026-10-24T13:00:00+00:00",
+  "lookback_days": 14,
+  "tables": [
+    {
+      "name": "rcu-500-consumed-40",
+      "description": {
+        "TableName": "rcu-500-consumed-40",
+        "TableArn": "arn:aws:dynamodb:eu-central-1:111122223333:table/audit-log",
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2022-09-02T11:04:19+00:00",
+        "ItemCount": 5120,
+        "TableSizeBytes": 104857600,
+        "KeySchema": [
+          {
+            "AttributeName": "event_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingModeSummary": {
+          "BillingMode": "PROVISIONED"
+        },
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 500,
+          "WriteCapacityUnits": 10
+        },
+        "DeletionProtectionEnabled": true,
+        "SSEDescription": {
+          "Status": "ENABLED",
+          "SSEType": "KMS",
+          "KMSMasterKeyArn": "arn:aws:kms:eu-central-1:111122223333:key/8f3c1b4a-0d2e-4f61-9a77-2c5ee1b90a11"
+        }
+      },
+      "continuous_backups": {
+        "ContinuousBackupsStatus": "ENABLED",
+        "PointInTimeRecoveryDescription": {
+          "PointInTimeRecoveryStatus": "ENABLED",
+          "EarliestRestorableDateTime": "2026-10-10T00:00:00+00:00",
+          "LatestRestorableDateTime": "2026-10-24T13:00:00+00:00"
+        }
+      },
+      "ttl": {
+        "TimeToLiveStatus": "DISABLED"
+      },
+      "tags": [
+        {
+          "Key": "owner",
+          "Value": "team-platform"
+        },
+        {
+          "Key": "environment",
+          "Value": "prod"
+        }
+      ],
+      "autoscaling_targets": [
+        {
+          "ResourceId": "table/audit-log",
+          "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+          "MinCapacity": 5,
+          "MaxCapacity": 4000
+        },
+        {
+          "ResourceId": "table/audit-log",
+          "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+          "MinCapacity": 5,
+          "MaxCapacity": 4000
+        }
+      ],
+      "metrics": {
+        "table": {
+          "ConsumedReadCapacityUnits": {
+            "avg": 40.0,
+            "max": 48.0,
+            "points": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ]
+          },
+          "ConsumedWriteCapacityUnits": {
+            "avg": 8.0,
+            "max": 11.0,
+            "points": [
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0
+            ]
+          }
+        },
+        "gsi": {}
+      }
+    },
+    {
+      "name": "rcu-50-consumed-40",
+      "description": {
+        "TableName": "rcu-50-consumed-40",
+        "TableArn": "arn:aws:dynamodb:eu-central-1:111122223333:table/audit-log",
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2022-09-02T11:04:19+00:00",
+        "ItemCount": 5120,
+        "TableSizeBytes": 104857600,
+        "KeySchema": [
+          {
+            "AttributeName": "event_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingModeSummary": {
+          "BillingMode": "PROVISIONED"
+        },
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 50,
+          "WriteCapacityUnits": 10
+        },
+        "DeletionProtectionEnabled": true,
+        "SSEDescription": {
+          "Status": "ENABLED",
+          "SSEType": "KMS",
+          "KMSMasterKeyArn": "arn:aws:kms:eu-central-1:111122223333:key/8f3c1b4a-0d2e-4f61-9a77-2c5ee1b90a11"
+        }
+      },
+      "continuous_backups": {
+        "ContinuousBackupsStatus": "ENABLED",
+        "PointInTimeRecoveryDescription": {
+          "PointInTimeRecoveryStatus": "ENABLED",
+          "EarliestRestorableDateTime": "2026-10-10T00:00:00+00:00",
+          "LatestRestorableDateTime": "2026-10-24T13:00:00+00:00"
+        }
+      },
+      "ttl": {
+        "TimeToLiveStatus": "DISABLED"
+      },
+      "tags": [
+        {
+          "Key": "owner",
+          "Value": "team-platform"
+        },
+        {
+          "Key": "environment",
+          "Value": "prod"
+        }
+      ],
+      "autoscaling_targets": [
+        {
+          "ResourceId": "table/audit-log",
+          "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+          "MinCapacity": 5,
+          "MaxCapacity": 4000
+        },
+        {
+          "ResourceId": "table/audit-log",
+          "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+          "MinCapacity": 5,
+          "MaxCapacity": 4000
+        }
+      ],
+      "metrics": {
+        "table": {
+          "ConsumedReadCapacityUnits": {
+            "avg": 40.0,
+            "max": 48.0,
+            "points": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ]
+          },
+          "ConsumedWriteCapacityUnits": {
+            "avg": 8.0,
+            "max": 11.0,
+            "points": [
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0,
+              8.0
+            ]
+          }
+        },
+        "gsi": {}
+      }
+    }
+  ]
+}

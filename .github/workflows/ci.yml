@@ -1,0 +1,76 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Test
+        # No AWS credentials anywhere in this job: every rule is exercised through
+        # the JSON fixtures under tests/fixtures/.
+        run: python -m pytest -q
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install .
+
+      - name: Audit the example dump
+        run: aws-dynamodb-audit --from-json examples/account-dump.json
+
+      - name: Exit 1 when a --fail-on rule fires
+        run: |
+          set +e
+          aws-dynamodb-audit --from-json examples/account-dump.json --fail-on no-pitr
+          code=$?
+          set -e
+          test "$code" -eq 1 || { echo "expected exit 1, got $code"; exit 1; }
+
+      - name: Exit 0 on a clean dump
+        run: aws-dynamodb-audit --from-json tests/fixtures/clean.json --fail-on no-pitr,aws-owned-key
+
+      - name: Exit 2 on an unknown rule name
+        run: |
+          set +e
+          aws-dynamodb-audit --from-json examples/account-dump.json --fail-on no-such-rule
+          code=$?
+          set -e
+          test "$code" -eq 2 || { echo "expected exit 2, got $code"; exit 1; }

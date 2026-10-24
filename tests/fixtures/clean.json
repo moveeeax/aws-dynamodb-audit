@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "region": "eu-central-1",
+  "collected_at": "2026-10-24T13:00:00+00:00",
+  "lookback_days": 14,
+  "tables": [
+    {
+      "name": "carts",
+      "description": {
+        "TableName": "carts",
+        "TableArn": "arn:aws:dynamodb:eu-central-1:111122223333:table/carts",
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-03-14T10:00:00+00:00",
+        "ItemCount": 22400,
+        "TableSizeBytes": 94371840,
+        "KeySchema": [
+          {
+            "AttributeName": "cart_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingModeSummary": {
+          "BillingMode": "PAY_PER_REQUEST"
+        },
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 0,
+          "WriteCapacityUnits": 0
+        },
+        "DeletionProtectionEnabled": true,
+        "SSEDescription": {
+          "Status": "ENABLED",
+          "SSEType": "KMS",
+          "KMSMasterKeyArn": "arn:aws:kms:eu-central-1:111122223333:key/8f3c1b4a-0d2e-4f61-9a77-2c5ee1b90a11"
+        },
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "by-user",
+            "IndexStatus": "ACTIVE",
+            "KeySchema": [
+              {
+                "AttributeName": "user_id",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "KEYS_ONLY"
+            },
+            "IndexSizeBytes": 12582912,
+            "ItemCount": 22400
+          }
+        ]
+      },
+      "continuous_backups": {
+        "ContinuousBackupsStatus": "ENABLED",
+        "PointInTimeRecoveryDescription": {
+          "PointInTimeRecoveryStatus": "ENABLED",
+          "EarliestRestorableDateTime": "2026-10-10T00:00:00+00:00",
+          "LatestRestorableDateTime": "2026-10-24T13:00:00+00:00"
+        }
+      },
+      "ttl": {
+        "TimeToLiveStatus": "ENABLED",
+        "AttributeName": "expires_at"
+      },
+      "tags": [
+        {
+          "Key": "owner",
+          "Value": "team-checkout"
+        },
+        {
+          "Key": "environment",
+          "Value": "prod"
+        },
+        {
+          "Key": "cost-center",
+          "Value": "cc-4411"
+        }
+      ],
+      "autoscaling_targets": [],
+      "metrics": {
+        "table": {
+          "ConsumedReadCapacityUnits": {
+            "avg": 97.0,
+            "max": 220.0,
+            "points": [
+              5.0,
+              200.0,
+              10.0,
+              180.0,
+              3.0,
+              150.0,
+              8.0,
+              220.0,
+              4.0,
+              190.0
+            ]
+          },
+          "ConsumedWriteCapacityUnits": {
+            "avg": 97.0,
+            "max": 220.0,
+            "points": [
+              5.0,
+              200.0,
+              10.0,
+              180.0,
+              3.0,
+              150.0,
+              8.0,
+              220.0,
+              4.0,
+              190.0
+            ]
+          }
+        },
+        "gsi": {
+          "by-user": {
+            "ConsumedReadCapacityUnits": {
+              "avg": 14.0,
+              "max": 30.0,
+              "points": [
+                14.0,
+                14.0,
+                14.0,
+                14.0,
+                14.0,
+                14.0,
+                14.0,
+                14.0,
+                14.0,
+                14.0
+              ]
+            },
+            "ConsumedWriteCapacityUnits": {
+              "avg": 9.0,
+              "max": 22.0,
+              "points": [
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

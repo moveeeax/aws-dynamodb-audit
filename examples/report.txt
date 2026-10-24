@@ -1,0 +1,34 @@
+aws-dynamodb-audit 0.1.0  region=eu-central-1  tables=4  findings=11  lookback=14d
+
+archive
+  MEDIUM  overprovisioned-capacity  1000 RCU provisioned against a 0.0 consumed average (no measured reads); 1000 WCU
+                                    provisioned against a 0.0 consumed average (no measured writes) - about $569.40/month of
+                                    unused capacity
+
+audit-log
+  MEDIUM  aws-owned-key             table is encrypted with the AWS-owned key, which has no key policy, no grants and no
+                                    CloudTrail trail of its own - a customer-managed-key requirement cannot be met
+
+orders
+  MEDIUM  gsi-idle                  GSI by-status consumed 0.000 capacity units on average over 14d - it is paid for on every
+                                    write and read by nobody
+  MEDIUM  gsi-projects-all          GSI by-customer projects ALL, so every write to the 8.0 GiB base table is replicated in full
+                                    into the index (6.0 GiB); switch to KEYS_ONLY or INCLUDE with the attributes the query
+                                    actually reads
+  LOW     no-autoscaling            provisioned mode with no Application Auto Scaling target for ReadCapacityUnits,
+                                    WriteCapacityUnits - capacity only ever changes when a human notices
+  HIGH    no-deletion-protection    deletion protection is off on a table holding 2,412,880 items
+  HIGH    no-pitr                   point-in-time recovery is not enabled, so there is no restore window - this cannot be
+                                    switched on retroactively
+  LOW     no-ttl                    TTL is disabled on a table of 8.0 GiB taking 30.0 WCU of sustained writes; growth is
+                                    inferred, pass --compare-json <older dump> for a measured delta
+  MEDIUM  overprovisioned-capacity  500 RCU provisioned against a 40.0 consumed average (12.5x) - about $43.65/month of unused
+                                    capacity
+  LOW     untagged                  missing required tag(s) environment - the cost allocation report cannot attribute this
+                                    table's spend
+
+sessions
+  LOW     ondemand-steady-traffic   on-demand traffic is flat (cv 0.04) and costs about $98.55/month; 125 RCU / 50 WCU
+                                    provisioned with 20% headroom would cost about $35.59/month
+
+Estimated monthly waste: $676.02
