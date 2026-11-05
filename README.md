@@ -1,7 +1,7 @@
 # aws-dynamodb-audit
 
 [![ci](https://github.com/moveeeax/aws-dynamodb-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/moveeeax/aws-dynamodb-audit/actions/workflows/ci.yml)
-[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org/)
+[![python](https://img.shields.io/badge/python-3.11%20%E2%80%93%203.15-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 DynamoDB does not page you. The table works, it keeps working, and it keeps working at four
@@ -49,11 +49,33 @@ aws-dynamodb-audit --from-json /tmp/ddb.json --format json | jq '.findings[] | s
 aws-dynamodb-audit --fail-on no-pitr,aws-owned-key --ignore-table scratch-dev
 ```
 
+### Flags
+
+| flag | default | meaning |
+| --- | --- | --- |
+| `--profile` | | AWS profile to collect with |
+| `--region` | | AWS region to collect from |
+| `--table NAME` | all tables | audit only this table; repeat for several |
+| `--lookback-days N` | `14` | CloudWatch window for consumed capacity |
+| `--from-json FILE` | | replay a dump instead of calling AWS (cannot be combined with `--profile`, `--region` or `--table`) |
+| `--dump-json FILE` | | write the collected payload to `FILE` |
+| `--compare-json FILE` | | an older dump, used to measure item-count growth for `no-ttl` |
+| `--format` | `text` | `text` or `json` |
+| `--severity` | `low` | minimum severity to report: `low`, `medium` or `high` |
+| `--fail-on RULES` | | comma-separated rules that make the exit code 1 when they fire |
+| `--ignore-rule RULES` | | comma-separated rules to skip |
+| `--ignore-table TABLES` | | comma-separated tables to skip |
+| `--waste-factor X` | `3` | provisioned/consumed ratio that trips `overprovisioned-capacity` |
+| `--prod-threshold N` | `10000` | item count that makes a table "production" for `no-deletion-protection` |
+| `--require-tags KEYS` | | comma-separated tag keys that `untagged` checks for |
+| `--growth-threshold X` | `0.10` | item-count growth (fraction) between dumps that trips `no-ttl` |
+| `--price-rcu-hour`, `--price-wcu-hour`, `--price-read-request`, `--price-write-request` | us-east-1 list prices | see [Pricing](#pricing) |
+
 Against the dump in `examples/`:
 
 ```console
 $ aws-dynamodb-audit --from-json examples/account-dump.json --require-tags owner,environment
-aws-dynamodb-audit 0.1.0  region=eu-central-1  tables=4  findings=11  lookback=14d
+aws-dynamodb-audit 0.2.0  region=eu-central-1  tables=4  findings=11  lookback=14d
 
 archive
   MEDIUM  overprovisioned-capacity  1000 RCU provisioned against a 0.0 consumed average (no measured reads); 1000 WCU
@@ -145,7 +167,7 @@ after a change.
 ## Development
 
 ```shell
-python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest
 .venv/bin/python -m ruff check .
 ```
