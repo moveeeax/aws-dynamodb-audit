@@ -1,4 +1,4 @@
-aws-dynamodb-audit 0.1.0  region=eu-central-1  tables=4  findings=11  lookback=14d
+aws-dynamodb-audit 0.2.0  region=eu-central-1  tables=4  findings=11  lookback=14d
 
 archive
   MEDIUM  overprovisioned-capacity  1000 RCU provisioned against a 0.0 consumed average (no measured reads); 1000 WCU
