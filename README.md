@@ -25,6 +25,8 @@ Every field it checks is already in `DescribeTable`, `DescribeContinuousBackups`
 | `gsi-idle` | medium | a GSI with effectively zero consumed capacity over the lookback window — paid for on every write, read by nobody |
 | `no-ttl` | low | TTL is `DISABLED` on a table that is growing; measured against `--compare-json`, inferred from sustained writes otherwise |
 | `no-autoscaling` | low | provisioned mode with no Application Auto Scaling target registered |
+| `table-class-ia-candidate` | low | a `STANDARD` table where storage is at least 50% of the estimated monthly bill; names the Standard and Standard-IA monthly figures |
+| `table-class-ia-wasted` | low | a `STANDARD_INFREQUENT_ACCESS` table where storage would be under 50% of a Standard bill and Standard comes out cheaper; names both monthly figures |
 | `untagged` | low | missing any key in `--require-tags`, so the cost allocation report cannot attribute the spend |
 
 `untagged` is opt-in: without `--require-tags` it never fires.
@@ -70,6 +72,7 @@ aws-dynamodb-audit --fail-on no-pitr,aws-owned-key --ignore-table scratch-dev
 | `--require-tags KEYS` | | comma-separated tag keys that `untagged` checks for |
 | `--growth-threshold X` | `0.10` | item-count growth (fraction) between dumps that trips `no-ttl` |
 | `--price-rcu-hour`, `--price-wcu-hour`, `--price-read-request`, `--price-write-request` | us-east-1 list prices | see [Pricing](#pricing) |
+| `--price-storage-gb`, `--price-storage-gb-ia` | `0.25`, `0.10` | storage per GB-month on Standard and Standard-IA, used by the `table-class-*` rules |
 
 Against the dump in `examples/`:
 
@@ -145,10 +148,25 @@ aws-dynamodb-audit --region eu-central-1 --fail-on no-pitr,no-deletion-protectio
 
 Dollar figures use the published us-east-1 Standard-table list prices — $0.00013 per RCU-hour,
 $0.00065 per WCU-hour, $0.125 per million read request units, $0.625 per million write request
-units, over a 730-hour month. Every other region is more expensive, so the numbers are a floor
-rather than a quote. Override them with `--price-rcu-hour`, `--price-wcu-hour`,
-`--price-read-request` and `--price-write-request`; the values actually used are echoed in the
-JSON output under `pricing`.
+units, over a 730-hour month. Storage is $0.25 per GB-month on Standard and $0.10 on
+Standard-IA. Every other region is more expensive, so the numbers are a floor rather than a
+quote. Override them with `--price-rcu-hour`, `--price-wcu-hour`, `--price-read-request`,
+`--price-write-request`, `--price-storage-gb` and `--price-storage-gb-ia`; the values actually
+used are echoed in the JSON output under `pricing`.
+
+Standard-IA reads and writes are priced as the Standard figures times 1.25 (us-east-1 lists
+$0.00016 per RCU-hour, $0.00081 per WCU-hour, $0.155 and $0.78 per million request units, all
+about 25% above Standard). A regional override of the Standard throughput prices therefore
+carries over to the Standard-IA estimate.
+
+The `table-class-*` rules follow the
+[AWS table class guidance](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/CostOptimization_TableClass.html):
+Standard-IA fits a table whose storage is about 50% or more of its monthly cost. The bill they
+estimate is storage of the table plus its GSIs, and throughput of the table plus its GSIs:
+provisioned capacity in provisioned mode, the consumed average priced as request units in
+on-demand mode. A switch that saves less than $1/month is not reported. Between roughly 29%
+and 50% storage share Standard-IA is still a little cheaper, so an IA table in that band is
+left alone rather than sent back to Standard.
 
 ## Gotchas
 
@@ -163,6 +181,12 @@ not publish item count to CloudWatch, so there is no way to get the history from
 A GSI with no CloudWatch datapoints is treated as idle, which is correct — but a GSI created
 yesterday has no datapoints either. Use `--ignore-rule gsi-idle` for the first lookback window
 after a change.
+
+The `table-class-*` estimate ignores the 25 GB storage free tier (it is per account, not per
+table) and reserved capacity. Standard-IA cannot use reserved capacity, so a Standard table
+covered by a reservation may not save anything by switching. The table class can be changed
+twice in 30 days. An on-demand table with no CloudWatch series in the dump gets no
+`table-class-*` finding, since its throughput cost is unknown.
 
 ## Development
 

@@ -5,6 +5,7 @@ import copy
 import pytest
 from conftest import load_fixture
 
+from aws_dynamodb_audit.pricing import Pricing
 from aws_dynamodb_audit.rules import Config, evaluate, waste_total
 
 GIB = 1024**3
@@ -191,6 +192,78 @@ def test_flat_item_count_does_not_trip_no_ttl(account):
 
 def test_ttl_enabled_is_quiet(account):
     assert "no-ttl" not in rules_for(account, "archive")
+
+
+# --------------------------------------------------------------------------- #
+# table class
+# --------------------------------------------------------------------------- #
+
+
+def test_table_class_rules_fire_only_where_the_other_class_is_cheaper():
+    payload = load_fixture("table_class.json")
+    fired = {(f.table, f.rule) for f in evaluate(payload, Config())}
+    assert fired == {
+        ("history-ondemand", "table-class-ia-candidate"),
+        ("logs-provisioned", "table-class-ia-candidate"),
+        ("hot-ia", "table-class-ia-wasted"),
+    }
+
+
+def test_ia_candidate_prices_ondemand_storage_and_requests():
+    payload = load_fixture("table_class.json")
+    (finding,) = one(payload, "history-ondemand", "table-class-ia-candidate")
+    # 200 GiB * $0.25 = $50; 1.0 RCU/s and 0.5 WCU/s over 2,628,000 s at $0.125/$0.625 per M = $1.15
+    assert finding.detail["standard_monthly_usd"] == pytest.approx(51.15, abs=0.01)
+    # 200 GiB * $0.10 = $20; throughput * 1.25 = $1.44
+    assert finding.detail["ia_monthly_usd"] == pytest.approx(21.44, abs=0.01)
+    assert finding.estimated_monthly_usd == pytest.approx(29.71, abs=0.01)
+    assert "$51.15/month on STANDARD" in finding.message
+    assert "$21.44/month on STANDARD_INFREQUENT_ACCESS" in finding.message
+
+
+def test_ia_candidate_counts_gsi_storage_and_provisioned_capacity():
+    payload = load_fixture("table_class.json")
+    (finding,) = one(payload, "logs-provisioned", "table-class-ia-candidate")
+    # 100 GiB table + 20 GiB GSI; 15 RCU / 10 WCU across table and GSI over 730 hours
+    assert finding.detail["size_bytes_with_indexes"] == 120 * GIB
+    assert finding.detail["standard_storage_monthly_usd"] == pytest.approx(30.0)
+    assert finding.detail["standard_throughput_monthly_usd"] == pytest.approx(6.17, abs=0.01)
+    assert finding.detail["storage_share_on_standard"] == pytest.approx(0.829, abs=0.001)
+
+
+def test_ia_wasted_names_both_monthly_figures():
+    payload = load_fixture("table_class.json")
+    (finding,) = one(payload, "hot-ia", "table-class-ia-wasted")
+    # 1000 RCU / 200 WCU * 730 h = $189.80 on Standard, * 1.25 = $237.25 on IA
+    assert finding.detail["standard_monthly_usd"] == pytest.approx(192.30, abs=0.01)
+    assert finding.detail["ia_monthly_usd"] == pytest.approx(238.25, abs=0.01)
+    assert finding.estimated_monthly_usd == pytest.approx(45.95, abs=0.01)
+
+
+def test_ia_table_between_the_two_thresholds_is_left_alone():
+    """Storage at ~40% of a Standard bill: IA is still cheaper, so neither rule fires."""
+    payload = load_fixture("table_class.json")
+    assert rules_for(payload, "balanced-ia") == set()
+
+
+def test_table_class_ignores_tiny_savings_and_missing_metrics():
+    payload = load_fixture("table_class.json")
+    assert rules_for(payload, "small-standard") == set()
+    assert rules_for(payload, "no-metrics") == set()
+    cfg = Config(min_class_saving_usd=0.0)
+    assert "table-class-ia-candidate" in rules_for(payload, "small-standard", cfg=cfg)
+
+
+def test_table_class_follows_storage_price_overrides():
+    payload = load_fixture("table_class.json")
+    # At Standard-IA storage priced like Standard, the switch only adds the throughput premium.
+    cfg = Config(pricing=Pricing(storage_gb_month_ia=0.25))
+    assert rules_for(payload, "history-ondemand", cfg=cfg) == set()
+
+
+def test_existing_fixtures_have_no_table_class_findings(account, clean):
+    for payload in (account, clean):
+        assert not [f for f in evaluate(payload, Config()) if f.rule.startswith("table-class-")]
 
 
 # --------------------------------------------------------------------------- #

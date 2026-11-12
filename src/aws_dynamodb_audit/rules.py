@@ -56,6 +56,8 @@ class Config:
     headroom: float = 1.2
     require_tags: tuple[str, ...] = ()
     lookback_days: int = 14
+    ia_storage_share: float = 0.5
+    min_class_saving_usd: float = 1.0
 
 
 # --------------------------------------------------------------------------- #
@@ -71,6 +73,12 @@ def billing_mode(entry: dict) -> str:
     """DescribeTable omits BillingModeSummary for tables created before it existed."""
     summary = _desc(entry).get("BillingModeSummary") or {}
     return summary.get("BillingMode") or "PROVISIONED"
+
+
+def table_class(entry: dict) -> str:
+    """DescribeTable omits TableClassSummary on tables that never left the default class."""
+    summary = _desc(entry).get("TableClassSummary") or {}
+    return summary.get("TableClass") or "STANDARD"
 
 
 def provisioned(entry: dict) -> tuple[float, float]:
@@ -310,6 +318,121 @@ def rule_ondemand_steady_traffic(entry: dict, cfg: Config) -> list[Finding]:
     ]
 
 
+_CONSUMED = ("ConsumedReadCapacityUnits", "ConsumedWriteCapacityUnits")
+
+
+def _monthly_throughput(entry: dict, cfg: Config) -> float | None:
+    """Standard-class monthly cost of the table's reads and writes, GSIs included.
+
+    Provisioned mode pays for what is provisioned. On-demand pays for what was consumed,
+    so it needs the CloudWatch series; a dump without them returns None rather than
+    pretending the table is idle.
+    """
+    seconds_per_month = 3600 * cfg.pricing.as_dict()["hours_per_month"]
+    if billing_mode(entry) == "PROVISIONED":
+        rcu, wcu = provisioned(entry)
+        for idx in indexes(entry):
+            tp = idx.get("ProvisionedThroughput") or {}
+            rcu += float(tp.get("ReadCapacityUnits") or 0)
+            wcu += float(tp.get("WriteCapacityUnits") or 0)
+        return cfg.pricing.provisioned_monthly(rcu, wcu)
+
+    sources = [None] + [idx.get("IndexName", "?") for idx in indexes(entry)]
+    if not any(_metric_source(entry, None).get(m) is not None for m in _CONSUMED):
+        return None
+    read = sum(metric(entry, _CONSUMED[0], "avg", index=s) or 0.0 for s in sources)
+    write = sum(metric(entry, _CONSUMED[1], "avg", index=s) or 0.0 for s in sources)
+    return cfg.pricing.ondemand_monthly(read * seconds_per_month, write * seconds_per_month)
+
+
+def _class_costs(entry: dict, cfg: Config) -> dict | None:
+    """Monthly storage and throughput cost of the table on both classes."""
+    throughput = _monthly_throughput(entry, cfg)
+    if throughput is None:
+        return None
+    size = table_size(entry) + sum(int(idx.get("IndexSizeBytes") or 0) for idx in indexes(entry))
+    standard_storage = cfg.pricing.storage_monthly(size)
+    ia_storage = cfg.pricing.storage_monthly(size, infrequent_access=True)
+    standard = standard_storage + throughput
+    ia = ia_storage + throughput * cfg.pricing.ia_throughput_factor
+    return {
+        "size_bytes": size,
+        "standard_storage": standard_storage,
+        "standard_throughput": throughput,
+        "standard_total": standard,
+        "ia_storage": ia_storage,
+        "ia_throughput": throughput * cfg.pricing.ia_throughput_factor,
+        "ia_total": ia,
+        "storage_share": standard_storage / standard if standard > 0 else 0.0,
+    }
+
+
+def _class_detail(costs: dict, current: str) -> dict:
+    return {
+        "table_class": current,
+        "size_bytes_with_indexes": costs["size_bytes"],
+        "storage_share_on_standard": round(costs["storage_share"], 3),
+        "standard_monthly_usd": round(costs["standard_total"], 2),
+        "standard_storage_monthly_usd": round(costs["standard_storage"], 2),
+        "standard_throughput_monthly_usd": round(costs["standard_throughput"], 2),
+        "ia_monthly_usd": round(costs["ia_total"], 2),
+        "ia_storage_monthly_usd": round(costs["ia_storage"], 2),
+        "ia_throughput_monthly_usd": round(costs["ia_throughput"], 2),
+    }
+
+
+def rule_table_class_ia_candidate(entry: dict, cfg: Config) -> list[Finding]:
+    if table_class(entry) != "STANDARD":
+        return []
+    costs = _class_costs(entry, cfg)
+    if costs is None or costs["storage_share"] < cfg.ia_storage_share:
+        return []
+    saving = costs["standard_total"] - costs["ia_total"]
+    if saving < cfg.min_class_saving_usd:
+        return []
+    return [
+        Finding(
+            table=entry["name"],
+            rule="table-class-ia-candidate",
+            severity="low",
+            message=(
+                f"storage is {costs['storage_share'] * 100:.0f}% of this table's Standard bill "
+                f"({_human_bytes(costs['size_bytes'])} with indexes); it costs about "
+                f"{usd(costs['standard_total'])}/month on STANDARD and would cost about "
+                f"{usd(costs['ia_total'])}/month on STANDARD_INFREQUENT_ACCESS"
+            ),
+            detail=_class_detail(costs, "STANDARD"),
+            estimated_monthly_usd=saving,
+        )
+    ]
+
+
+def rule_table_class_ia_wasted(entry: dict, cfg: Config) -> list[Finding]:
+    if table_class(entry) != "STANDARD_INFREQUENT_ACCESS":
+        return []
+    costs = _class_costs(entry, cfg)
+    if costs is None or costs["storage_share"] >= cfg.ia_storage_share:
+        return []
+    saving = costs["ia_total"] - costs["standard_total"]
+    if saving < cfg.min_class_saving_usd:
+        return []
+    return [
+        Finding(
+            table=entry["name"],
+            rule="table-class-ia-wasted",
+            severity="low",
+            message=(
+                f"throughput dominates this Standard-IA table (storage would be "
+                f"{costs['storage_share'] * 100:.0f}% of a Standard bill); it costs about "
+                f"{usd(costs['ia_total'])}/month on STANDARD_INFREQUENT_ACCESS and would cost about "
+                f"{usd(costs['standard_total'])}/month on STANDARD"
+            ),
+            detail=_class_detail(costs, "STANDARD_INFREQUENT_ACCESS"),
+            estimated_monthly_usd=saving,
+        )
+    ]
+
+
 def rule_gsi_projects_all(entry: dict, cfg: Config) -> list[Finding]:
     size = table_size(entry)
     if size < cfg.gsi_size_bytes:
@@ -480,6 +603,8 @@ RULES: dict[str, RuleFn] = {
     "gsi-idle": rule_gsi_idle,
     "no-ttl": rule_no_ttl,
     "no-autoscaling": rule_no_autoscaling,
+    "table-class-ia-candidate": rule_table_class_ia_candidate,
+    "table-class-ia-wasted": rule_table_class_ia_wasted,
     "untagged": rule_untagged,
 }
 

@@ -14,6 +14,8 @@ from aws_dynamodb_audit import __version__
 from aws_dynamodb_audit.pricing import (
     DEFAULT_RCU_HOUR,
     DEFAULT_READ_REQUEST_MILLION,
+    DEFAULT_STORAGE_GB_MONTH,
+    DEFAULT_STORAGE_GB_MONTH_IA,
     DEFAULT_WCU_HOUR,
     DEFAULT_WRITE_REQUEST_MILLION,
     Pricing,
@@ -35,7 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="aws-dynamodb-audit",
         description=(
             "Audit DynamoDB tables for missing point-in-time recovery, AWS-owned encryption keys, "
-            "wasted provisioned capacity, pointless global secondary indexes and absent TTL."
+            "wasted provisioned capacity, pointless global secondary indexes, absent TTL "
+            "and the wrong table class."
         ),
         epilog="Rules: " + ", ".join(RULE_NAMES),
     )
@@ -72,6 +75,18 @@ def build_parser() -> argparse.ArgumentParser:
     price.add_argument("--price-wcu-hour", type=float, default=DEFAULT_WCU_HOUR)
     price.add_argument("--price-read-request", type=float, default=DEFAULT_READ_REQUEST_MILLION)
     price.add_argument("--price-write-request", type=float, default=DEFAULT_WRITE_REQUEST_MILLION)
+    price.add_argument(
+        "--price-storage-gb",
+        type=float,
+        default=DEFAULT_STORAGE_GB_MONTH,
+        help="Standard storage per GB-month",
+    )
+    price.add_argument(
+        "--price-storage-gb-ia",
+        type=float,
+        default=DEFAULT_STORAGE_GB_MONTH_IA,
+        help="Standard-IA storage per GB-month",
+    )
     return p
 
 
@@ -124,6 +139,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         wcu_hour=args.price_wcu_hour,
         read_request_million=args.price_read_request,
         write_request_million=args.price_write_request,
+        storage_gb_month=args.price_storage_gb,
+        storage_gb_month_ia=args.price_storage_gb_ia,
     )
     cfg = Config(
         pricing=pricing,
