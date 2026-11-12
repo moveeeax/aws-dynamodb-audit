@@ -150,7 +150,10 @@
     "wcu_hour": 0.00065,
     "read_request_million": 0.125,
     "write_request_million": 0.625,
+    "storage_gb_month": 0.25,
+    "storage_gb_month_ia": 0.1,
+    "ia_throughput_factor": 1.25,
     "hours_per_month": 730
   },
-  "pricing_note": "Prices are us-east-1 DynamoDB Standard list prices (provisioned $0.00013/RCU-hour, $0.00065/WCU-hour; on-demand $0.125/M read request units, $0.625/M write request units). Other regions cost more - override with --price-rcu-hour, --price-wcu-hour, --price-read-request, --price-write-request."
+  "pricing_note": "Prices are us-east-1 DynamoDB list prices, Standard table class unless noted (provisioned $0.00013/RCU-hour, $0.00065/WCU-hour; on-demand $0.125/M read request units, $0.625/M write request units; storage $0.25/GB-month, $0.1/GB-month on Standard-IA, Standard-IA throughput at 1.25x Standard). Other regions cost more - override with --price-rcu-hour, --price-wcu-hour, --price-read-request, --price-write-request, --price-storage-gb, --price-storage-gb-ia."
 }

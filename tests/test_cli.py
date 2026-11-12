@@ -122,6 +122,23 @@ def test_pricing_overrides_change_the_dollar_figure(capsys, fixtures_dir, no_net
     assert json.loads(doubled)["estimated_monthly_waste_usd"] == pytest.approx(base * 2, abs=0.02)
 
 
+def test_storage_price_overrides_reach_the_table_class_rules(capsys, fixtures_dir, no_network):
+    args = ("--from-json", str(fixtures_dir / "table_class.json"), "--format", "json")
+    _, default, _ = run(capsys, *args)
+    _, overridden, _ = run(capsys, *args, "--price-storage-gb", "0.30", "--price-storage-gb-ia", "0.12")
+    doc = json.loads(overridden)
+    assert doc["pricing"]["storage_gb_month"] == 0.30
+    assert doc["pricing"]["storage_gb_month_ia"] == 0.12
+
+    def standard_storage(out: str) -> float:
+        (f,) = [f for f in json.loads(out)["findings"] if f["table"] == "history-ondemand"]
+        return f["detail"]["standard_storage_monthly_usd"]
+
+    # 200 GiB at $0.25 and at $0.30
+    assert standard_storage(default) == pytest.approx(50.0)
+    assert standard_storage(overridden) == pytest.approx(60.0)
+
+
 def test_require_tags_turns_on_the_untagged_rule(capsys, fixtures_dir, no_network):
     code, out, _ = run(
         capsys,
